@@ -74,26 +74,23 @@ button:hover { border-color: #666; }
 }
 
 .krow {
-  display: grid;
+  display: flex;
+  justify-content: center; /* <- centra la riga */
   gap: 8px;
-  justify-content: center;
 }
-
-.krow.r1 { grid-template-columns: repeat(10, 1fr); }
-.krow.r2 { grid-template-columns: repeat(9, 1fr);  }
-.krow.r3 { grid-template-columns: 1.6fr repeat(7, 1fr) 1.6fr; } /* Enter + 7 lettere + Back */
 
 .key {
   border: 1px solid #3a3a3a;
   background: #222;
   color: #eee;
   border-radius: 10px;
-  padding: 12px 6px;
+  padding: 12px 10px;
   font-weight: 700;
   text-transform: uppercase;
   cursor: pointer;
   text-align: center;
   touch-action: manipulation;
+  min-width: 32px; /* comodo su mobile */
 }
 
 .key:active { transform: translateY(1px); }
@@ -102,4 +99,7 @@ button:hover { border-color: #666; }
 .key.yellow { background: #a07b12; border-color: #a07b12; }
 .key.gray   { background: #444;    border-color: #444; }
 
-.key.wide { font-size: 0.9rem; }
+.key.wide {
+  min-width: 72px; /* Enter e Backspace più larghi */
+  font-size: 0.9rem;
+}

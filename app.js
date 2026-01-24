@@ -1,4 +1,4 @@
-// app.js — Wordle-like ITA (5 lettere) + tastiera di stato (solo visuale)
+// app.js — Wordle-like ITA (5 lettere) + tastiera on-screen (mobile) + colori tasti
 
 const WORD_LEN = 5;
 const MAX_TRIES = 6;
@@ -24,10 +24,12 @@ init();
 
 async function init() {
   buildBoard();
-  buildKeyboardStatusOnly();
+  buildKeyboard(); // <- tastiera cliccabile/touch
 
-  // aggancia subito la tastiera fisica
+  // input da tastiera fisica
   window.addEventListener("keydown", onKeyDown);
+
+  // nuova partita
   newGameBtn?.addEventListener("click", startNewGame);
 
   try {
@@ -35,9 +37,7 @@ async function init() {
     startNewGame();
   } catch (err) {
     console.error(err);
-    setMsg(
-      "Errore caricamento parole. Verifica che words.json esista e sia raggiungibile (vedi Console)."
-    );
+    setMsg("Errore caricamento parole. Controlla che words.json sia presente e valido (vedi Console).");
   }
 }
 
@@ -85,7 +85,6 @@ async function loadWords() {
   const solutions = uniq((data.solutions || []).map(clean)).filter((w) => w.length === WORD_LEN);
   const allowed = uniq((data.allowed || []).map(clean)).filter((w) => w.length === WORD_LEN);
 
-  // assicurati che tutte le soluzioni siano anche allowed
   const set = new Set(allowed);
   for (const w of solutions) set.add(w);
 
@@ -109,7 +108,7 @@ function startNewGame() {
     cell.textContent = "";
   });
 
-  // reset tastiera stato
+  // reset tastiera colori
   keyStatus = {};
   resetKeyboardUI();
 
@@ -117,13 +116,17 @@ function startNewGame() {
   // console.log("DEBUG solution:", solution);
 }
 
+/* ---------------------------
+   Input: tastiera fisica
+---------------------------- */
+
 function onKeyDown(e) {
   if (locked) return;
 
-  const key = e.key;
-
-  // ignora combinazioni (Ctrl/Cmd/Alt) per evitare di bloccare shortcut
+  // ignora combinazioni per non rompere shortcut
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  const key = e.key;
 
   if (key === "Enter") {
     e.preventDefault();
@@ -141,6 +144,64 @@ function onKeyDown(e) {
     typeLetter(key.toLowerCase());
   }
 }
+
+/* ---------------------------
+   Input: tastiera on-screen
+---------------------------- */
+
+function buildKeyboard() {
+  if (!keyboardEl) return;
+  keyboardEl.innerHTML = "";
+
+  const rows = [
+    ["q","w","e","r","t","y","u","i","o","p"],
+    ["a","s","d","f","g","h","j","k","l"],
+    ["enter","z","x","c","v","b","n","m","back"]
+  ];
+
+  rows.forEach((keys) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "krow";
+
+    keys.forEach((k) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "key";
+      btn.dataset.key = k;
+
+      if (k === "enter") {
+        btn.textContent = "Invio";
+        btn.classList.add("wide");
+        btn.setAttribute("aria-label", "Invio");
+      } else if (k === "back") {
+        btn.textContent = "⌫";
+        btn.classList.add("wide");
+        btn.setAttribute("aria-label", "Cancella");
+      } else {
+        btn.textContent = k.toUpperCase();
+        btn.setAttribute("aria-label", `Lettera ${k.toUpperCase()}`);
+      }
+
+      // click/touch
+      btn.addEventListener("click", () => handleVirtualKey(k));
+      rowEl.appendChild(btn);
+    });
+
+    keyboardEl.appendChild(rowEl);
+  });
+}
+
+function handleVirtualKey(k) {
+  if (locked) return;
+
+  if (k === "enter") return submitGuess();
+  if (k === "back") return backspace();
+  if (/^[a-z]$/.test(k)) return typeLetter(k);
+}
+
+/* ---------------------------
+   Logica inserimento
+---------------------------- */
 
 function typeLetter(ch) {
   if (row >= MAX_TRIES) return;
@@ -164,6 +225,7 @@ function submitGuess() {
   if (row >= MAX_TRIES) return;
 
   const guess = current[row].join("");
+
   if (guess.length !== WORD_LEN || current[row].some((x) => !x)) {
     setMsg("Completa 5 lettere prima di premere Invio.");
     return;
@@ -233,6 +295,10 @@ function evaluateGuess(guess, sol) {
   return result;
 }
 
+/* ---------------------------
+   Render griglia
+---------------------------- */
+
 function applyMarks(r, marks) {
   for (let c = 0; c < WORD_LEN; c++) {
     const cell = getCell(r, c);
@@ -261,37 +327,8 @@ function setMsg(text) {
 }
 
 /* ---------------------------
-   Tastiera di stato (solo UI)
+   Tastiera: colori stato
 ---------------------------- */
-
-function buildKeyboardStatusOnly() {
-  if (!keyboardEl) return;
-
-  keyboardEl.innerHTML = "";
-
-  // layout QWERTY (Wordle-like). Solo visuale.
-  const rows = [
-    "q w e r t y u i o p".split(" "),
-    "a s d f g h j k l".split(" "),
-    "z x c v b n m".split(" "),
-  ];
-
-  rows.forEach((letters, idx) => {
-    const rowEl = document.createElement("div");
-    rowEl.className = `krow r${idx + 1}`;
-
-    letters.forEach((ch) => {
-      const k = document.createElement("div");
-      k.className = "key";
-      k.dataset.key = ch;
-      k.textContent = ch.toUpperCase();
-      // non cliccabile: niente listener, e cursore neutro se vuoi
-      rowEl.appendChild(k);
-    });
-
-    keyboardEl.appendChild(rowEl);
-  });
-}
 
 function resetKeyboardUI() {
   if (!keyboardEl) return;
@@ -309,10 +346,10 @@ function upgradeStatus(prev, next) {
 
 function setKeyColor(letter, status) {
   if (!keyboardEl) return;
-  const keyEl = keyboardEl.querySelector(`.key[data-key="${letter}"]`);
-  if (!keyEl) return;
-  keyEl.classList.remove("gray", "yellow", "green");
-  keyEl.classList.add(status);
+  const keyBtn = keyboardEl.querySelector(`.key[data-key="${letter}"]`);
+  if (!keyBtn) return;
+  keyBtn.classList.remove("gray", "yellow", "green");
+  keyBtn.classList.add(status);
 }
 
 function updateKeyboardFromGuess(guess, marks) {
