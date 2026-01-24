@@ -1,0 +1,325 @@
+// app.js — Wordle-like ITA (5 lettere) + tastiera di stato (solo visuale)
+
+const WORD_LEN = 5;
+const MAX_TRIES = 6;
+
+let words = { solutions: [], allowed: [] };
+let allowedSet = new Set();
+
+let solution = "";
+let row = 0;
+let col = 0;
+let current = Array.from({ length: MAX_TRIES }, () => Array(WORD_LEN).fill(""));
+let locked = false;
+
+// stato tastiera: lettera -> "gray" | "yellow" | "green"
+let keyStatus = {};
+
+const boardEl = document.getElementById("board");
+const msgEl = document.getElementById("msg");
+const newGameBtn = document.getElementById("newGame");
+const keyboardEl = document.getElementById("keyboard");
+
+init();
+
+async function init() {
+  buildBoard();
+  buildKeyboardStatusOnly();
+
+  // aggancia subito la tastiera fisica
+  window.addEventListener("keydown", onKeyDown);
+  newGameBtn?.addEventListener("click", startNewGame);
+
+  try {
+    await loadWords();
+    startNewGame();
+  } catch (err) {
+    console.error(err);
+    setMsg(
+      "Errore caricamento parole. Verifica che words.json esista e sia raggiungibile (vedi Console)."
+    );
+  }
+}
+
+function buildBoard() {
+  boardEl.innerHTML = "";
+  for (let r = 0; r < MAX_TRIES; r++) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "row";
+    rowEl.dataset.row = String(r);
+
+    for (let c = 0; c < WORD_LEN; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.col = String(c);
+      rowEl.appendChild(cell);
+    }
+    boardEl.appendChild(rowEl);
+  }
+}
+
+async function loadWords() {
+  const res = await fetch("words.json", { cache: "no-store" });
+  if (!res.ok) throw new Error(`Impossibile caricare words.json (${res.status})`);
+  const data = await res.json();
+
+  const clean = (w) =>
+    String(w)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // diacritici
+      .replace(/[^a-z]/g, ""); // solo a-z
+
+  const uniq = (arr) => {
+    const seen = new Set();
+    const out = [];
+    for (const x of arr) {
+      if (!seen.has(x)) {
+        seen.add(x);
+        out.push(x);
+      }
+    }
+    return out;
+  };
+
+  const solutions = uniq((data.solutions || []).map(clean)).filter((w) => w.length === WORD_LEN);
+  const allowed = uniq((data.allowed || []).map(clean)).filter((w) => w.length === WORD_LEN);
+
+  // assicurati che tutte le soluzioni siano anche allowed
+  const set = new Set(allowed);
+  for (const w of solutions) set.add(w);
+
+  words = { solutions, allowed: Array.from(set) };
+  allowedSet = set;
+
+  if (words.solutions.length === 0) throw new Error("Nessuna parola valida in solutions.");
+}
+
+function startNewGame() {
+  locked = false;
+  row = 0;
+  col = 0;
+
+  current = Array.from({ length: MAX_TRIES }, () => Array(WORD_LEN).fill(""));
+  solution = words.solutions[Math.floor(Math.random() * words.solutions.length)];
+
+  // reset griglia
+  document.querySelectorAll(".cell").forEach((cell) => {
+    cell.className = "cell";
+    cell.textContent = "";
+  });
+
+  // reset tastiera stato
+  keyStatus = {};
+  resetKeyboardUI();
+
+  setMsg("Scrivi una parola di 5 lettere e premi Invio.");
+  // console.log("DEBUG solution:", solution);
+}
+
+function onKeyDown(e) {
+  if (locked) return;
+
+  const key = e.key;
+
+  // ignora combinazioni (Ctrl/Cmd/Alt) per evitare di bloccare shortcut
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if (key === "Enter") {
+    e.preventDefault();
+    submitGuess();
+    return;
+  }
+  if (key === "Backspace") {
+    e.preventDefault();
+    backspace();
+    return;
+  }
+
+  if (/^[a-zA-Z]$/.test(key)) {
+    e.preventDefault();
+    typeLetter(key.toLowerCase());
+  }
+}
+
+function typeLetter(ch) {
+  if (row >= MAX_TRIES) return;
+  if (col >= WORD_LEN) return;
+
+  current[row][col] = ch;
+  renderCell(row, col, ch, { filled: true });
+  col++;
+}
+
+function backspace() {
+  if (row >= MAX_TRIES) return;
+  if (col === 0) return;
+
+  col--;
+  current[row][col] = "";
+  renderCell(row, col, "", { filled: false, clearStatus: true });
+}
+
+function submitGuess() {
+  if (row >= MAX_TRIES) return;
+
+  const guess = current[row].join("");
+  if (guess.length !== WORD_LEN || current[row].some((x) => !x)) {
+    setMsg("Completa 5 lettere prima di premere Invio.");
+    return;
+  }
+
+  if (!allowedSet.has(guess)) {
+    setMsg("Parola non in elenco.");
+    return;
+  }
+
+  const marks = evaluateGuess(guess, solution);
+  applyMarks(row, marks);
+  updateKeyboardFromGuess(guess, marks);
+
+  if (guess === solution) {
+    locked = true;
+    setMsg("Bravo! Hai indovinato 🎉");
+    return;
+  }
+
+  row++;
+  col = 0;
+
+  if (row >= MAX_TRIES) {
+    locked = true;
+    setMsg(`Peccato! La parola era: ${solution.toUpperCase()}`);
+    return;
+  }
+
+  setMsg("Continua…");
+}
+
+/**
+ * Ritorna array di 5 stati: "green" | "yellow" | "gray"
+ * Gestione doppioni corretta con conteggio residuo.
+ */
+function evaluateGuess(guess, sol) {
+  const result = Array(WORD_LEN).fill("gray");
+  const solArr = sol.split("");
+  const guessArr = guess.split("");
+
+  // 1) verdi
+  for (let i = 0; i < WORD_LEN; i++) {
+    if (guessArr[i] === solArr[i]) {
+      result[i] = "green";
+      solArr[i] = null; // consumata
+    }
+  }
+
+  // 2) conteggi residui (solo lettere non verdi)
+  const remaining = {};
+  for (const ch of solArr) {
+    if (!ch) continue;
+    remaining[ch] = (remaining[ch] || 0) + 1;
+  }
+
+  // 3) gialli
+  for (let i = 0; i < WORD_LEN; i++) {
+    if (result[i] === "green") continue;
+    const ch = guessArr[i];
+    if (remaining[ch] > 0) {
+      result[i] = "yellow";
+      remaining[ch]--;
+    }
+  }
+
+  return result;
+}
+
+function applyMarks(r, marks) {
+  for (let c = 0; c < WORD_LEN; c++) {
+    const cell = getCell(r, c);
+    cell.classList.remove("gray", "yellow", "green");
+    cell.classList.add(marks[c]);
+  }
+}
+
+function renderCell(r, c, ch, opts = {}) {
+  const cell = getCell(r, c);
+  cell.textContent = ch ? ch.toUpperCase() : "";
+
+  if (opts.filled) cell.classList.add("filled");
+  else cell.classList.remove("filled");
+
+  if (opts.clearStatus) cell.classList.remove("gray", "yellow", "green");
+}
+
+function getCell(r, c) {
+  const rowEl = boardEl.querySelector(`.row[data-row="${r}"]`);
+  return rowEl.querySelector(`.cell[data-col="${c}"]`);
+}
+
+function setMsg(text) {
+  if (msgEl) msgEl.textContent = text;
+}
+
+/* ---------------------------
+   Tastiera di stato (solo UI)
+---------------------------- */
+
+function buildKeyboardStatusOnly() {
+  if (!keyboardEl) return;
+
+  keyboardEl.innerHTML = "";
+
+  // layout QWERTY (Wordle-like). Solo visuale.
+  const rows = [
+    "q w e r t y u i o p".split(" "),
+    "a s d f g h j k l".split(" "),
+    "z x c v b n m".split(" "),
+  ];
+
+  rows.forEach((letters, idx) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = `krow r${idx + 1}`;
+
+    letters.forEach((ch) => {
+      const k = document.createElement("div");
+      k.className = "key";
+      k.dataset.key = ch;
+      k.textContent = ch.toUpperCase();
+      // non cliccabile: niente listener, e cursore neutro se vuoi
+      rowEl.appendChild(k);
+    });
+
+    keyboardEl.appendChild(rowEl);
+  });
+}
+
+function resetKeyboardUI() {
+  if (!keyboardEl) return;
+  keyboardEl.querySelectorAll(".key").forEach((k) => {
+    k.classList.remove("gray", "yellow", "green");
+  });
+}
+
+// priorità colori: green > yellow > gray
+function upgradeStatus(prev, next) {
+  const rank = { gray: 1, yellow: 2, green: 3 };
+  if (!prev) return next;
+  return rank[next] > rank[prev] ? next : prev;
+}
+
+function setKeyColor(letter, status) {
+  if (!keyboardEl) return;
+  const keyEl = keyboardEl.querySelector(`.key[data-key="${letter}"]`);
+  if (!keyEl) return;
+  keyEl.classList.remove("gray", "yellow", "green");
+  keyEl.classList.add(status);
+}
+
+function updateKeyboardFromGuess(guess, marks) {
+  for (let i = 0; i < WORD_LEN; i++) {
+    const ch = guess[i];
+    const st = marks[i]; // "green"|"yellow"|"gray"
+    keyStatus[ch] = upgradeStatus(keyStatus[ch], st);
+    setKeyColor(ch, keyStatus[ch]);
+  }
+}
