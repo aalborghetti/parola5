@@ -3,35 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ParolA5</title>
-  <link rel="stylesheet" href="style.css?v=1">
-
+  <title>Parola5</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-	<header class="top">
-	  <h1>ParolA5</h1>
-	</header>
+  <header class="top">
+    <h1>Parola5</h1>
+  </header>
 
   <main>
     <div id="board" class="board" aria-label="Griglia di gioco"></div>
     <div id="msg" class="msg" role="status" aria-live="polite"></div>
-	<div id="keyboard" class="keyboard" aria-label="Tastiera"></div>
+
+    <div id="keyboard" class="keyboard" aria-label="Tastiera"></div>
 
     <div class="controls">
       <button id="newGame" type="button">Nuova partita</button>
     </div>
-
-    <details class="help">
-      <summary>Istruzioni</summary>
-      <ul>
-        <li>Scrivi una parola di 5 lettere e premi Invio.</li>
-        <li><span class="chip green"></span> lettera giusta al posto giusto</li>
-        <li><span class="chip yellow"></span> lettera presente ma in altra posizione</li>
-        <li><span class="chip gray"></span> lettera assente</li>
-      </ul>
-    </details>
   </main>
 
-  <script src="app.js?v=1"></script>
+  <script src="app.js"></script>
 </body>
 </html>

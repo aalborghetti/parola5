@@ -1,10 +1,8 @@
-// app.js — Wordle-like ITA (5 lettere) + tastiera on-screen (mobile) + colori tasti
-
 const WORD_LEN = 5;
 const MAX_TRIES = 6;
 
-let words = { solutions: [], allowed: [] };
-let allowedSet = new Set();
+let solutions = [];
+let solutionsSet = new Set();
 
 let solution = "";
 let row = 0;
@@ -20,16 +18,17 @@ const msgEl = document.getElementById("msg");
 const newGameBtn = document.getElementById("newGame");
 const keyboardEl = document.getElementById("keyboard");
 
-init();
+document.addEventListener("DOMContentLoaded", () => {
+  init();
+});
 
 async function init() {
+  if (!boardEl) throw new Error("Elemento #board non trovato in index.html");
+
   buildBoard();
-  buildKeyboard(); // <- tastiera cliccabile/touch
+  buildKeyboard();
 
-  // input da tastiera fisica
   window.addEventListener("keydown", onKeyDown);
-
-  // nuova partita
   newGameBtn?.addEventListener("click", startNewGame);
 
   try {
@@ -37,7 +36,7 @@ async function init() {
     startNewGame();
   } catch (err) {
     console.error(err);
-    setMsg("Errore caricamento parole. Controlla che words.json sia presente e valido (vedi Console).");
+    setMsg("Errore caricamento words.json. Controlla Console e che il file sia presente.");
   }
 }
 
@@ -67,8 +66,8 @@ async function loadWords() {
     String(w)
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // diacritici
-      .replace(/[^a-z]/g, ""); // solo a-z
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z]/g, "");
 
   const uniq = (arr) => {
     const seen = new Set();
@@ -82,17 +81,15 @@ async function loadWords() {
     return out;
   };
 
-  const solutions = uniq((data.solutions || []).map(clean)).filter((w) => w.length === WORD_LEN);
-  const allowed = uniq((data.allowed || []).map(clean)).filter((w) => w.length === WORD_LEN);
+  solutions = uniq((data.solutions || []).map(clean)).filter((w) => w.length === WORD_LEN);
+  solutionsSet = new Set(solutions);
 
-  const set = new Set(allowed);
-  for (const w of solutions) set.add(w);
-
-  words = { solutions, allowed: Array.from(set) };
-  allowedSet = set;
-
-  if (words.solutions.length === 0) throw new Error("Nessuna parola valida in solutions.");
+  if (solutions.length === 0) throw new Error("Nessuna parola valida in solutions.");
 }
+
+/* ---------------------------
+   Nuova partita
+---------------------------- */
 
 function startNewGame() {
   locked = false;
@@ -100,20 +97,17 @@ function startNewGame() {
   col = 0;
 
   current = Array.from({ length: MAX_TRIES }, () => Array(WORD_LEN).fill(""));
-  solution = words.solutions[Math.floor(Math.random() * words.solutions.length)];
+  solution = solutions[Math.floor(Math.random() * solutions.length)];
 
-  // reset griglia
   document.querySelectorAll(".cell").forEach((cell) => {
     cell.className = "cell";
     cell.textContent = "";
   });
 
-  // reset tastiera colori
   keyStatus = {};
   resetKeyboardUI();
 
-  setMsg("Scrivi una parola di 5 lettere e premi Invio.");
-  // console.log("DEBUG solution:", solution);
+  setMsg("Scrivi una parola di 5 lettere e premi ↵.");
 }
 
 /* ---------------------------
@@ -122,31 +116,18 @@ function startNewGame() {
 
 function onKeyDown(e) {
   if (locked) return;
-
-  // ignora combinazioni per non rompere shortcut
   if (e.ctrlKey || e.metaKey || e.altKey) return;
 
   const key = e.key;
 
-  if (key === "Enter") {
-    e.preventDefault();
-    submitGuess();
-    return;
-  }
-  if (key === "Backspace") {
-    e.preventDefault();
-    backspace();
-    return;
-  }
+  if (key === "Enter") return submitGuess();
+  if (key === "Backspace") return backspace();
 
-  if (/^[a-zA-Z]$/.test(key)) {
-    e.preventDefault();
-    typeLetter(key.toLowerCase());
-  }
+  if (/^[a-zA-Z]$/.test(key)) typeLetter(key.toLowerCase());
 }
 
 /* ---------------------------
-   Input: tastiera on-screen
+   Tastiera on-screen
 ---------------------------- */
 
 function buildKeyboard() {
@@ -159,9 +140,9 @@ function buildKeyboard() {
     ["enter","z","x","c","v","b","n","m","back"]
   ];
 
-  rows.forEach((keys) => {
+  rows.forEach((keys, idx) => {
     const rowEl = document.createElement("div");
-    rowEl.className = "krow";
+    rowEl.className = `krow r${idx + 1}`;
 
     keys.forEach((k) => {
       const btn = document.createElement("button");
@@ -170,9 +151,9 @@ function buildKeyboard() {
       btn.dataset.key = k;
 
       if (k === "enter") {
-		btn.textContent = "↵";
-		btn.classList.add("wide");
-		btn.setAttribute("aria-label", "Invio");
+        btn.textContent = "↵";
+        btn.classList.add("wide");
+        btn.setAttribute("aria-label", "Invio");
       } else if (k === "back") {
         btn.textContent = "⌫";
         btn.classList.add("wide");
@@ -182,7 +163,6 @@ function buildKeyboard() {
         btn.setAttribute("aria-label", `Lettera ${k.toUpperCase()}`);
       }
 
-      // click/touch
       btn.addEventListener("click", () => handleVirtualKey(k));
       rowEl.appendChild(btn);
     });
@@ -200,7 +180,7 @@ function handleVirtualKey(k) {
 }
 
 /* ---------------------------
-   Logica inserimento
+   Inserimento / logica
 ---------------------------- */
 
 function typeLetter(ch) {
@@ -225,13 +205,13 @@ function submitGuess() {
   if (row >= MAX_TRIES) return;
 
   const guess = current[row].join("");
-
   if (guess.length !== WORD_LEN || current[row].some((x) => !x)) {
-    setMsg("Completa 5 lettere prima di premere Invio.");
+    setMsg("Completa 5 lettere prima di inviare.");
     return;
   }
 
-  if (!allowedSet.has(guess)) {
+  // ✅ ora validiamo SOLO contro solutions
+  if (!solutionsSet.has(guess)) {
     setMsg("Parola non in elenco.");
     return;
   }
@@ -258,31 +238,27 @@ function submitGuess() {
   setMsg("Continua…");
 }
 
-/**
- * Ritorna array di 5 stati: "green" | "yellow" | "gray"
- * Gestione doppioni corretta con conteggio residuo.
- */
 function evaluateGuess(guess, sol) {
   const result = Array(WORD_LEN).fill("gray");
   const solArr = sol.split("");
   const guessArr = guess.split("");
 
-  // 1) verdi
+  // verdi
   for (let i = 0; i < WORD_LEN; i++) {
     if (guessArr[i] === solArr[i]) {
       result[i] = "green";
-      solArr[i] = null; // consumata
+      solArr[i] = null;
     }
   }
 
-  // 2) conteggi residui (solo lettere non verdi)
+  // conteggi residui
   const remaining = {};
   for (const ch of solArr) {
     if (!ch) continue;
     remaining[ch] = (remaining[ch] || 0) + 1;
   }
 
-  // 3) gialli
+  // gialli
   for (let i = 0; i < WORD_LEN; i++) {
     if (result[i] === "green") continue;
     const ch = guessArr[i];
@@ -337,7 +313,6 @@ function resetKeyboardUI() {
   });
 }
 
-// priorità colori: green > yellow > gray
 function upgradeStatus(prev, next) {
   const rank = { gray: 1, yellow: 2, green: 3 };
   if (!prev) return next;
@@ -355,7 +330,7 @@ function setKeyColor(letter, status) {
 function updateKeyboardFromGuess(guess, marks) {
   for (let i = 0; i < WORD_LEN; i++) {
     const ch = guess[i];
-    const st = marks[i]; // "green"|"yellow"|"gray"
+    const st = marks[i];
     keyStatus[ch] = upgradeStatus(keyStatus[ch], st);
     setKeyColor(ch, keyStatus[ch]);
   }
