@@ -170,9 +170,9 @@ function buildKeyboard() {
       btn.dataset.key = k;
 
       if (k === "enter") {
-        btn.textContent = "Invio";
-        btn.classList.add("wide");
-        btn.setAttribute("aria-label", "Invio");
+		btn.textContent = "↵";
+		btn.classList.add("wide");
+		btn.setAttribute("aria-label", "Invio");
       } else if (k === "back") {
         btn.textContent = "⌫";
         btn.classList.add("wide");
