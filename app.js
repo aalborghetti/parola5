@@ -1,6 +1,6 @@
 const WORD_LEN = 5;
 const MAX_TRIES = 6;
-const FLIP_MS = 250;
+const FLIP_MS = 350;
 
 const STATE_KEY = "parola5_state";
 const STATS_KEY = "parola5_stats";

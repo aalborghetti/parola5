@@ -1,23 +1,56 @@
-:root { --gap: 10px; }
+:root {
+  /* Palette (tema scuro raffinato) */
+  --bg: #121214;
+  --fg: #e9e9ec;
+  --muted: #9aa0aa;
+
+  --cell-bg: #18181b;
+  --cell-border: #3a3a40;
+  --cell-border-filled: #585862;
+
+  --green:  #3aa75a;
+  --yellow: #c9a227;
+  --gray:   #2f3238;
+
+  --key-bg: #565b66;      /* tasto non ancora provato (grigio medio, ben distinto dall'assente) */
+  --key-hover: #646a76;
+  --accent: #5aa9ff;
+
+  --radius: 10px;
+  --gap: 8px;
+  --w: min(400px, 92vw);   /* larghezza comune di board/tastiera/statistiche */
+}
+
+* { box-sizing: border-box; }
 
 body {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   margin: 0;
-  padding: 16px 20px 22px;
-  display: grid;
-  justify-content: center;
-  background: #111;
-  color: #eee;
+  min-height: 100dvh;
+  padding: 16px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .top { text-align: center; margin: 0 0 8px; }
-.top h1 { margin: 0; font-size: 1.6rem; }
+.top h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  letter-spacing: 0.04em;
+}
 
+/* ---------------------------
+   Griglia di gioco
+---------------------------- */
 .board {
   display: grid;
   grid-template-rows: repeat(6, 1fr);
   gap: var(--gap);
-  width: min(360px, 92vw);
+  width: var(--w);
   margin: 8px auto 10px;
 }
 
@@ -29,107 +62,165 @@ body {
 
 .cell {
   aspect-ratio: 1 / 1;
-  border: 2px solid #333;
-  border-radius: 10px;
+  border: 2px solid var(--cell-border);
+  border-radius: var(--radius);
   display: grid;
   place-items: center;
-  font-size: 1.6rem;
+  font-size: clamp(1.3rem, 6vw, 1.9rem);
   font-weight: 700;
   text-transform: uppercase;
-  background: #0f0f0f;
+  background: var(--cell-bg);
+  transition: border-color .15s ease;
 }
 
-.cell.filled { border-color: #555; }
+.cell.filled { border-color: var(--cell-border-filled); }
+/* "pop" solo quando si digita (cella riempita ma non ancora colorata):
+   evita che riparta alla fine del flip quando viene rimossa la classe .flipping */
+.cell.filled:not(.green):not(.yellow):not(.gray) { animation: pop .12s ease; }
 
-.cell.green  { background: #1f7a3a; border-color: #1f7a3a; }
-.cell.yellow { background: #a07b12; border-color: #a07b12; }
-.cell.gray   { background: #444;    border-color: #444; }
+.cell.green  { background: var(--green);  border-color: var(--green);  color: #fff; }
+.cell.yellow { background: var(--yellow); border-color: var(--yellow); color: #fff; }
+.cell.gray   { background: var(--gray);   border-color: var(--gray);   color: #fff; }
 
-.msg { text-align: center; min-height: 1.5em; opacity: 0.9; margin: 6px 0 0; }
-.controls { display: grid; justify-content: center; margin-top: 10px; }
+/* ---------------------------
+   Messaggi e controlli
+---------------------------- */
+.msg {
+  text-align: center;
+  min-height: 1.5em;
+  width: var(--w);
+  color: var(--muted);
+  margin: 6px auto 0;
+}
+
+.controls { display: flex; justify-content: center; margin-top: 12px; }
 
 button {
-  border: 1px solid #444;
-  background: #1c1c1c;
-  color: #eee;
-  padding: 10px 14px;
-  border-radius: 10px;
+  border: 1px solid #45454d;
+  background: #1c1c1f;
+  color: var(--fg);
+  padding: 11px 18px;
+  border-radius: var(--radius);
+  font-weight: 600;
   cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .06s ease;
 }
-button:hover { border-color: #666; }
+button:hover { background: #26262a; border-color: #5c5c66; }
+button:active { transform: translateY(1px); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* Tastiera: stessa larghezza della griglia */
+/* ---------------------------
+   Tastiera a schermo
+---------------------------- */
 .keyboard {
-  width: min(360px, 92vw);
-  margin: 12px auto 0;
-  display: grid;
-  gap: 10px;
+  width: var(--w);
+  margin: 14px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
   user-select: none;
 }
 
 .krow {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
+}
+
+/* Indenta di mezza unità la riga centrale (9 tasti) -> tasti uniformi tra le righe */
+.krow.r2::before,
+.krow.r2::after {
+  content: "";
+  flex: 0.5;
 }
 
 .key {
-  border: 1px solid #3a3a3a;
-  background: #222;
-  color: #eee;
-  border-radius: 10px;
-  padding: 12px 0;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  height: clamp(48px, 7.5vh, 60px);
+  border: 1px solid #3a3d44;
+  background: var(--key-bg);
+  color: var(--fg);
+  border-radius: var(--radius);
+  font-size: clamp(0.95rem, 3.6vw, 1.2rem);
   font-weight: 700;
   text-transform: uppercase;
-  text-align: center;
   cursor: pointer;
   touch-action: manipulation;
+  box-shadow: 0 1px 0 rgba(0,0,0,.4);
+  transition: background .15s ease, border-color .15s ease, transform .06s ease;
 }
 
-/* rendi più stretti i tasti per stare entro la larghezza della griglia */
-.krow.r1 .key { width: calc((100% - (8px * 9)) / 10); }
-.krow.r2 .key { width: calc((100% - (8px * 8)) / 9);  }
+.key.wide {
+  flex: 1.5;
+  font-size: 1.15em;
+}
+.key[data-key="enter"] { color: var(--fg); font-size: 1.8em; }
 
-/* terza riga centrata: 1.5 + 7 + 1.5 = 10 "unità" */
-.krow.r3 .key        { width: calc((100% - (8px * 8)) / 10); }
-.krow.r3 .key.wide   { width: calc(((100% - (8px * 8)) / 10) * 1.5); }
+.key:hover { background: var(--key-hover); border-color: #5a5f6a; }
+.key:active { transform: translateY(1px) scale(.97); }
+.key:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.key:active { transform: translateY(1px); }
+.key.green  { background: var(--green);  border-color: var(--green);  color: #fff; }
+.key.yellow { background: var(--yellow); border-color: var(--yellow); color: #fff; }
+.key.gray   { background: var(--gray);   border-color: var(--gray);   color: #fff; }
 
-.key.green  { background: #1f7a3a; border-color: #1f7a3a; }
-.key.yellow { background: #a07b12; border-color: #a07b12; }
-.key.gray   { background: #444;    border-color: #444; }
-
-/* Animazione flip */
+/* ---------------------------
+   Animazioni
+---------------------------- */
+/* Flip 3D (stile Wordle): la tessera ruota sull'asse X; a metà (di taglio)
+   il JS scambia il colore, così il cambio resta nascosto. */
 @keyframes cell-flip {
-  0%   { transform: scaleY(1); }
-  50%  { transform: scaleY(0); }
-  100% { transform: scaleY(1); }
+  0%   { transform: perspective(500px) rotateX(0deg); }
+  50%  { transform: perspective(500px) rotateX(-90deg); }
+  100% { transform: perspective(500px) rotateX(0deg); }
 }
-.cell.flipping { animation: cell-flip 0.25s ease; }
+.cell.flipping { animation: cell-flip 0.35s ease; }
 
-/* Statistiche fine partita */
+@keyframes pop {
+  50% { transform: scale(1.07); }
+}
+
+/* ---------------------------
+   Statistiche fine partita
+---------------------------- */
 .stats {
   display: flex;
   justify-content: space-around;
-  width: min(360px, 92vw);
-  margin: 14px auto 0;
-  padding: 12px 0 4px;
-  border-top: 1px solid #333;
+  width: var(--w);
+  margin: 16px auto 0;
+  padding: 14px 0 4px;
+  border-top: 1px solid #2c2c32;
 }
 .stats-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  font-size: 0.78rem;
+  gap: 4px;
+  font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #aaa;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
 .stats-item strong {
-  font-size: 1.6rem;
+  font-size: clamp(1.4rem, 6vw, 1.8rem);
   font-weight: 700;
-  color: #eee;
+  color: var(--fg);
   line-height: 1;
+}
+
+/* ---------------------------
+   Schermi grandi (tablet / PC)
+---------------------------- */
+@media (min-width: 600px) {
+  :root { --w: 460px; --gap: 9px; }
+}
+
+/* ---------------------------
+   Accessibilità: riduci movimento
+---------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .cell.flipping, .cell.filled { animation: none; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
 }

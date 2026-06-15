@@ -23,7 +23,7 @@
 - Tastiera **fisica** e tastiera **a schermo** (on-screen), entrambe funzionanti.
 - I tasti della tastiera a schermo si colorano in base allo stato migliore raggiunto per ciascuna lettera (verde > giallo > grigio).
 - Gestione corretta delle **lettere doppie** (conteggio degli abbinamenti residui dopo i verdi).
-- **Animazione "flip"** delle celle alla conferma del tentativo (250 ms per cella, in sequenza).
+- **Animazione "flip"** delle celle alla conferma del tentativo (350 ms per cella, in sequenza).
 - **Statistiche persistenti** (partite, % vittorie, serie attuale, record) salvate nel browser.
 - **Ripresa automatica** della partita in corso dopo ricarica/chiusura della pagina.
 - Interfaccia responsive con tema scuro.
@@ -37,7 +37,7 @@
 | `index.html` | Markup della pagina: header, griglia di gioco (`#board`), area messaggi (`#msg`), pannello statistiche (`#stats`), tastiera (`#keyboard`) e pulsante *Nuova partita*. |
 | `style.css` | Stili (tema scuro): griglia 6×5, colori degli esiti (verde/giallo/grigio), animazione flip, pannello statistiche e layout responsive della tastiera. |
 | `app.js` | Logica di gioco: caricamento parole, gestione input, valutazione dei tentativi, animazione, statistiche, persistenza, rendering e stato della tastiera. |
-| `words.json` | Dizionario delle parole valide. Oggetto JSON con la chiave `solutions`: un array di **7183** parole italiane di 5 lettere. |
+| `words.json` | Dizionario delle parole valide. Oggetto JSON con la chiave `solutions`: un array di **2528** parole italiane di 5 lettere di uso comune. |
 
 ## ⚙️ Come funziona (dettagli tecnici)
 
@@ -45,10 +45,10 @@
 - **Lista unica**: lo stesso elenco `solutions` è usato sia come **insieme delle possibili soluzioni** (la parola segreta è estratta a caso da qui) sia come **dizionario di validazione** dei tentativi.
 - **Valutazione** (`evaluateGuess`): prima vengono assegnati i **verdi**, poi i **gialli** in base al conteggio delle lettere residue, evitando falsi positivi sui duplicati.
 - **Stato tastiera** (`upgradeStatus`): ogni lettera mantiene lo stato di rango più alto raggiunto (`gray` < `yellow` < `green`).
-- **Animazione** (`applyMarksAnimated`): le celle ruotano in sequenza (`FLIP_MS = 250` ms ciascuna) e il colore viene scambiato a metà flip. Durante l'animazione l'input è bloccato (`animating`). Un token `gameId` annulla i timer ancora pendenti se si avvia una nuova partita, evitando che colorino la griglia nuova.
+- **Animazione** (`applyMarksAnimated`): le celle ruotano in sequenza (`FLIP_MS = 350` ms ciascuna) e il colore viene scambiato a metà flip. Durante l'animazione l'input è bloccato (`animating`). Un token `gameId` annulla i timer ancora pendenti se si avvia una nuova partita, evitando che colorino la griglia nuova.
 - **Persistenza** (`saveState`/`restoreState`): a ogni tentativo lo stato (parola, lettere, colori, riga/colonna, stato tastiera) è salvato in `localStorage` (`parola5_state`) e ripristinato all'avvio; viene rimosso a partita conclusa o all'avvio di una nuova.
 - **Statistiche** (`loadStats`/`updateStats`): partite giocate, vittorie, serie attuale, record e distribuzione dei tentativi sono salvate in `localStorage` (`parola5_stats`) e mostrate nel pannello `#stats` a fine partita.
-- **Costanti**: `WORD_LEN = 5`, `MAX_TRIES = 6`, `FLIP_MS = 250` (definite in cima a `app.js`).
+- **Costanti**: `WORD_LEN = 5`, `MAX_TRIES = 6`, `FLIP_MS = 350` (definite in cima a `app.js`).
 
 ## 🚀 Avvio in locale
 
@@ -78,7 +78,7 @@ L'app è stata verificata servendola via HTTP locale:
 
 - `index.html` → `HTTP 200`
 - `app.js` → `HTTP 200`
-- `words.json` → `HTTP 200` (100.590 byte, 7183 parole valide di 5 lettere)
+- `words.json` → `HTTP 200` (35.420 byte, 2528 parole valide di 5 lettere)
 
 ## 🛠️ Personalizzazione
 
