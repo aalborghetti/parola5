@@ -74,9 +74,10 @@ body {
 }
 
 .cell.filled { border-color: var(--cell-border-filled); }
-/* "pop" solo quando si digita (cella riempita ma non ancora colorata):
-   evita che riparta alla fine del flip quando viene rimossa la classe .flipping */
-.cell.filled:not(.green):not(.yellow):not(.gray) { animation: pop .12s ease; }
+/* "pop" solo quando si digita: cella riempita, non in flip e non ancora colorata.
+   :not(.flipping) evita di sopprimere il flip; :not(colore) evita che il pop
+   riparta alla fine del flip quando viene rimossa la classe .flipping. */
+.cell.filled:not(.flipping):not(.green):not(.yellow):not(.gray) { animation: pop .12s ease; }
 
 .cell.green  { background: var(--green);  border-color: var(--green);  color: #fff; }
 .cell.yellow { background: var(--yellow); border-color: var(--yellow); color: #fff; }

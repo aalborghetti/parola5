@@ -38,6 +38,7 @@
 | `style.css` | Stili (tema scuro): griglia 6×5, colori degli esiti (verde/giallo/grigio), animazione flip, pannello statistiche e layout responsive della tastiera. |
 | `app.js` | Logica di gioco: caricamento parole, gestione input, valutazione dei tentativi, animazione, statistiche, persistenza, rendering e stato della tastiera. |
 | `words.json` | Dizionario delle parole valide. Oggetto JSON con la chiave `solutions`: un array di **2528** parole italiane di 5 lettere di uso comune. |
+| `favicon.svg` | Icona del sito: griglia 3×3 in stile bandiera italiana (verde in alto a sinistra, bianco sulla diagonale, rosso in basso a destra), SVG scalabile. |
 
 ## ⚙️ Come funziona (dettagli tecnici)
 
